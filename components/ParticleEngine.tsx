@@ -24,6 +24,8 @@ export default function ParticleEngine() {
   const [nftBalance, setNftBalance] = useState<number | null>(null)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [isSeedAvailable, setIsSeedAvailable] = useState<boolean>(true)
+  const [seedCheckMessage, setSeedCheckMessage] = useState<string | null>(null)
   const [config, setConfig] = useState({
     particleCount: 25000,
     particleSize: 0.05,
@@ -380,6 +382,43 @@ export default function ParticleEngine() {
     }
   }, [config])
 
+  // Check seed availability when it changes
+  useEffect(() => {
+    const checkSeedAvailability = async () => {
+      if (!config.seedText || config.seedText.length === 0) {
+        setIsSeedAvailable(true)
+        setSeedCheckMessage(null)
+        return
+      }
+
+      try {
+        const response = await fetch('/api/check-seed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ seedText: config.seedText })
+        })
+
+        const data = await response.json()
+
+        setIsSeedAvailable(data.available)
+        if (!data.available) {
+          setSeedCheckMessage(data.message || 'This design has already been downloaded')
+        } else {
+          setSeedCheckMessage(null)
+        }
+      } catch (error) {
+        console.error('Error checking seed:', error)
+        // On error, assume available to not block users
+        setIsSeedAvailable(true)
+        setSeedCheckMessage(null)
+      }
+    }
+
+    // Debounce the check (wait 500ms after user stops typing)
+    const timer = setTimeout(checkSeedAvailability, 500)
+    return () => clearTimeout(timer)
+  }, [config.seedText])
+
   const handleSeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setConfig(prev => ({ ...prev, seedText: e.target.value }))
   }
@@ -426,32 +465,71 @@ export default function ParticleEngine() {
 
     // Check balance
     if (nftBalance === null || nftBalance < DOWNLOAD_PRICE) {
-      setPaymentError(`Insufficient $NFT balance. You need ${DOWNLOAD_PRICE} $NFT tokens.`)
+      setPaymentError(`Insufficient $NFT balance. You need ${DOWNLOAD_PRICE.toLocaleString()} $NFT tokens.`)
       return
     }
 
-    // Process payment
     setIsProcessingPayment(true)
     setPaymentError(null)
 
-    const result = await payForDownload(wallet, DOWNLOAD_PRICE, RPC_URL)
-
-    if (result.success) {
-      console.log('✅ Payment successful!', result.signature)
-      setIsProcessingPayment(false)
-      // Start download
-      downloadVideo()
-      // Refresh balance
-      if (wallet.publicKey) {
-        const newBalance = await checkNFTBalance(
-          wallet.publicKey.toBase58(),
-          DOWNLOAD_PRICE,
-          RPC_URL
-        )
-        setNftBalance(newBalance.balance)
+    try {
+      // Step 1: Double-check seed availability (should already be checked, but verify)
+      if (!isSeedAvailable) {
+        setPaymentError('This design has already been downloaded')
+        setIsProcessingPayment(false)
+        return
       }
-    } else {
-      setPaymentError(result.error || 'Payment failed')
+
+      // Step 2: Process payment
+      console.log('💳 Processing payment...')
+      const result = await payForDownload(wallet, DOWNLOAD_PRICE, RPC_URL)
+
+      if (result.success) {
+        console.log('✅ Payment successful!', result.signature)
+
+        // Step 3: Record the download in database
+        console.log('📝 Recording download...')
+        const recordResponse = await fetch('/api/record-download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            seedText: config.seedText,
+            walletAddress: wallet.publicKey?.toBase58(),
+            transactionSignature: result.signature
+          })
+        })
+
+        const recordData = await recordResponse.json()
+
+        if (!recordData.success) {
+          console.warn('⚠️ Failed to record download, but payment succeeded')
+        } else {
+          console.log('✅ Download recorded!')
+          // Mark seed as unavailable immediately
+          setIsSeedAvailable(false)
+          setSeedCheckMessage('This design has already been downloaded')
+        }
+
+        // Step 4: Start video download
+        setIsProcessingPayment(false)
+        downloadVideo()
+
+        // Step 5: Refresh balance
+        if (wallet.publicKey) {
+          const newBalance = await checkNFTBalance(
+            wallet.publicKey.toBase58(),
+            DOWNLOAD_PRICE,
+            RPC_URL
+          )
+          setNftBalance(newBalance.balance)
+        }
+      } else {
+        setPaymentError(result.error || 'Payment failed')
+        setIsProcessingPayment(false)
+      }
+    } catch (error: any) {
+      console.error('❌ Download flow error:', error)
+      setPaymentError(error.message || 'An error occurred')
       setIsProcessingPayment(false)
     }
   }
@@ -610,6 +688,10 @@ export default function ParticleEngine() {
               </button>
             </div>
 
+            {seedCheckMessage && (
+              <div className={styles.errorMessage}>{seedCheckMessage}</div>
+            )}
+
             {paymentError && (
               <div className={styles.errorMessage}>{paymentError}</div>
             )}
@@ -617,10 +699,16 @@ export default function ParticleEngine() {
             <div className={styles.downloadButtons}>
               <button 
                 onClick={handleDownloadClick} 
-                disabled={isRecording || isProcessingPayment || (nftBalance !== null && nftBalance < DOWNLOAD_PRICE)}
+                disabled={
+                  isRecording || 
+                  isProcessingPayment || 
+                  !isSeedAvailable ||
+                  (nftBalance !== null && nftBalance < DOWNLOAD_PRICE)
+                }
                 className={styles.downloadBtn}
               >
-                {isProcessingPayment ? 'Processing Payment...' : 
+                {!isSeedAvailable ? 'Design Already Downloaded' :
+                 isProcessingPayment ? 'Processing Payment...' : 
                  isRecording ? `Recording ${Math.round(recordingProgress)}%` : 
                  `Download Video (${(DOWNLOAD_PRICE / 1000).toFixed(0)}k $NFT)`}
               </button>
