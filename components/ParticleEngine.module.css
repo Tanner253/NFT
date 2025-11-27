@@ -1,0 +1,304 @@
+.canvasContainer {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+.header {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: 10;
+  user-select: none;
+}
+
+.title {
+  font-size: 48px;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 2px;
+  text-shadow: 0 0 30px rgba(79, 172, 254, 0.3);
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #aaa;
+  margin: 5px 0 0 0;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.mainInput {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  max-width: calc(100vw - 40px);
+  text-align: center;
+  z-index: 10;
+  user-select: none;
+}
+
+.inputLabel {
+  display: block;
+  font-size: 13px;
+  color: #aaa;
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.textInput {
+  width: 100%;
+  padding: 16px 24px;
+  background: rgba(20, 20, 30, 0.5);
+  backdrop-filter: blur(10px);
+  border: 2px solid #4facfe;
+  color: white;
+  border-radius: 12px;
+  outline: none;
+  font-family: monospace;
+  font-size: 18px;
+  box-sizing: border-box;
+  text-align: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2), 0 0 20px rgba(79, 172, 254, 0.15);
+}
+
+.textInput:focus {
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.25), 0 0 30px rgba(79, 172, 254, 0.4);
+  border-color: #00f2fe;
+}
+
+.textInput::placeholder {
+  color: #666;
+}
+
+.inputHint {
+  font-size: 11px;
+  color: #666;
+  margin: 10px 0 0 0;
+  letter-spacing: 1px;
+}
+
+.downloadButtons {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.downloadBtn {
+  padding: 14px 32px;
+  background: rgba(79, 172, 254, 0.2);
+  border: 1px solid #4facfe;
+  color: #4facfe;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+  min-width: 180px;
+}
+
+.downloadBtn:hover:not(:disabled) {
+  background: rgba(79, 172, 254, 0.3);
+  box-shadow: 0 0 20px rgba(79, 172, 254, 0.4);
+  transform: translateY(-2px);
+}
+
+.downloadBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settingsToggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background: rgba(20, 20, 30, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid #4facfe;
+  border-radius: 50%;
+  color: #4facfe;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+.settingsToggle:hover {
+  background: rgba(79, 172, 254, 0.2);
+  box-shadow: 0 0 20px rgba(79, 172, 254, 0.3);
+}
+
+.settingsToggle svg {
+  display: block;
+}
+
+.advancedControls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 280px;
+  background: rgba(20, 20, 30, 0.85);
+  backdrop-filter: blur(10px);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  user-select: none;
+  z-index: 10;
+}
+
+.closeButton {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.closeButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .settingsToggle {
+    display: flex;
+  }
+
+  .advancedControls {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    bottom: 0;
+    width: 300px;
+    max-width: 85vw;
+    height: 100vh;
+    border-radius: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    transition: right 0.3s ease;
+    overflow-y: auto;
+    padding-top: 60px;
+  }
+
+  .advancedControls.showMobile {
+    right: 0;
+  }
+
+  .closeButton {
+    display: flex;
+  }
+
+  .mainInput {
+    width: 90%;
+    bottom: 60px;
+  }
+
+  .textInput {
+    font-size: 16px;
+    padding: 14px 20px;
+  }
+
+  .downloadBtn {
+    padding: 12px 24px;
+    font-size: 13px;
+  }
+
+  .header .title {
+    font-size: 36px;
+  }
+
+  .header .subtitle {
+    font-size: 12px;
+  }
+}
+
+.controlGroup {
+  margin-bottom: 15px;
+}
+
+.controlGroup label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #aaa;
+  margin-bottom: 5px;
+}
+
+.controlGroup input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  outline: none;
+}
+
+.controlGroup input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4facfe;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.controlGroup input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.controlGroup input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4facfe;
+  cursor: pointer;
+  transition: transform 0.1s;
+  border: none;
+}
+
+.controlGroup input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
+
+.valueDisplay {
+  color: #fff;
+  font-weight: bold;
+}
+
+.stats {
+  margin-top: 15px;
+  font-size: 11px;
+  color: #666;
+  text-align: center;
+}
+
