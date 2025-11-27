@@ -121,6 +121,104 @@
   cursor: not-allowed;
 }
 
+.walletSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.connectBtn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border: none;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+  min-width: 180px;
+}
+
+.connectBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+}
+
+.walletHint {
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.walletInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 12px 20px;
+  background: rgba(79, 172, 254, 0.1);
+  border: 1px solid rgba(79, 172, 254, 0.3);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.walletAddress {
+  font-family: monospace;
+  font-size: 13px;
+  color: #4facfe;
+  margin: 0;
+  font-weight: 600;
+}
+
+.balance {
+  font-size: 13px;
+  color: #00f2fe;
+  margin: 0;
+  font-weight: 600;
+  padding: 4px 10px;
+  background: rgba(0, 242, 254, 0.1);
+  border-radius: 4px;
+}
+
+.disconnectBtn {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.disconnectBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.errorMessage {
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: rgba(255, 100, 100, 0.1);
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  border-radius: 6px;
+  color: #ff6b6b;
+  font-size: 12px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
 .settingsToggle {
   position: absolute;
   top: 20px;
@@ -228,6 +326,22 @@
   .downloadBtn {
     padding: 12px 24px;
     font-size: 13px;
+  }
+
+  .walletInfo {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 16px;
+  }
+
+  .walletAddress,
+  .balance {
+    font-size: 12px;
+  }
+
+  .connectBtn {
+    width: 100%;
+    max-width: 280px;
   }
 
   .header .title {

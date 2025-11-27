@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { SolanaWalletProvider } from '@/components/WalletProvider'
 
 export const metadata: Metadata = {
   title: '$NFT - Name Fungible Token',
@@ -13,7 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <SolanaWalletProvider>
+          {children}
+        </SolanaWalletProvider>
+      </body>
     </html>
   )
 }

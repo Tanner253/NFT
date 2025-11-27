@@ -3,16 +3,27 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { useWalletModal } from '@solana/wallet-adapter-react-ui'
+import { payForDownload, checkNFTBalance } from '@/utils/payment'
 import styles from './ParticleEngine.module.css'
+
+const DOWNLOAD_PRICE = 100000 // 100k $NFT tokens per download
+const RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC || 'https://api.mainnet-beta.solana.com'
 
 export default function ParticleEngine() {
   const containerRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
+  const wallet = useWallet()
+  const walletModal = useWalletModal()
   const [isRecording, setIsRecording] = useState(false)
   const [recordingProgress, setRecordingProgress] = useState(0)
   const [showControls, setShowControls] = useState(false)
+  const [nftBalance, setNftBalance] = useState<number | null>(null)
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
   const [config, setConfig] = useState({
     particleCount: 25000,
     particleSize: 0.05,
@@ -73,9 +84,15 @@ export default function ParticleEngine() {
     camera.position.z = 12
     camera.position.y = 5
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true })
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: false, 
+      preserveDrawingBuffer: true,
+      premultipliedAlpha: false
+    })
     renderer.setSize(window.innerWidth, window.innerHeight)
     renderer.setPixelRatio(window.devicePixelRatio)
+    renderer.setClearColor(0x050505, 1) // Set background color
     container.appendChild(renderer.domElement)
     
     rendererRef.current = renderer
@@ -383,6 +400,62 @@ export default function ParticleEngine() {
     setConfig(prev => ({ ...prev, rotationSpeed: parseFloat(e.target.value) }))
   }
 
+  // Check $NFT balance when wallet connects
+  useEffect(() => {
+    async function fetchBalance() {
+      if (wallet.connected && wallet.publicKey) {
+        const result = await checkNFTBalance(
+          wallet.publicKey.toBase58(),
+          DOWNLOAD_PRICE,
+          RPC_URL
+        )
+        setNftBalance(result.balance)
+      } else {
+        setNftBalance(null)
+      }
+    }
+    fetchBalance()
+  }, [wallet.connected, wallet.publicKey])
+
+  const handleDownloadClick = async () => {
+    // Check if wallet is connected
+    if (!wallet.connected) {
+      walletModal.setVisible(true)
+      return
+    }
+
+    // Check balance
+    if (nftBalance === null || nftBalance < DOWNLOAD_PRICE) {
+      setPaymentError(`Insufficient $NFT balance. You need ${DOWNLOAD_PRICE} $NFT tokens.`)
+      return
+    }
+
+    // Process payment
+    setIsProcessingPayment(true)
+    setPaymentError(null)
+
+    const result = await payForDownload(wallet, DOWNLOAD_PRICE, RPC_URL)
+
+    if (result.success) {
+      console.log('✅ Payment successful!', result.signature)
+      setIsProcessingPayment(false)
+      // Start download
+      downloadVideo()
+      // Refresh balance
+      if (wallet.publicKey) {
+        const newBalance = await checkNFTBalance(
+          wallet.publicKey.toBase58(),
+          DOWNLOAD_PRICE,
+          RPC_URL
+        )
+        setNftBalance(newBalance.balance)
+      }
+    } else {
+      setPaymentError(result.error || 'Payment failed')
+      setIsProcessingPayment(false)
+    }
+  }
+
   const downloadVideo = async () => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current || isRecording) return
     
@@ -392,13 +465,27 @@ export default function ParticleEngine() {
     const renderer = rendererRef.current
     const scene = sceneRef.current
     const camera = cameraRef.current
-    const canvas = renderer.domElement
+    
+    // Store original size
+    const originalWidth = renderer.domElement.width
+    const originalHeight = renderer.domElement.height
+    
+    // Set recording resolution to 1080p
+    const recordWidth = 1920
+    const recordHeight = 1080
+    
+    // Temporarily resize renderer for recording
+    renderer.setSize(recordWidth, recordHeight, false)
+    camera.aspect = recordWidth / recordHeight
+    camera.updateProjectionMatrix()
     
     // Force a render to ensure colors are fresh
     renderer.render(scene, camera)
     
-    // Use captureStream with explicit frame rate
-    const stream = canvas.captureStream(30) // 30 FPS
+    const canvas = renderer.domElement
+    
+    // Use captureStream with 60 FPS
+    const stream = canvas.captureStream(60)
     
     const chunks: Blob[] = []
     
@@ -413,7 +500,7 @@ export default function ParticleEngine() {
     
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType: mimeType,
-      videoBitsPerSecond: 8000000 // Higher bitrate for better quality
+      videoBitsPerSecond: 25000000 // 25 Mbps for 1080p60
     })
     
     mediaRecorder.ondataavailable = (e) => {
@@ -423,11 +510,16 @@ export default function ParticleEngine() {
     }
     
     mediaRecorder.onstop = () => {
+      // Restore original size
+      renderer.setSize(originalWidth, originalHeight, false)
+      camera.aspect = originalWidth / originalHeight
+      camera.updateProjectionMatrix()
+      
       const blob = new Blob(chunks, { type: 'video/webm' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${config.seedText}-${Date.now()}.webm`
+      a.download = `${config.seedText}-1080p60-${Date.now()}.webm`
       a.click()
       URL.revokeObjectURL(url)
       setIsRecording(false)
@@ -484,15 +576,57 @@ export default function ParticleEngine() {
         />
         <p className={styles.inputHint}>Enter text to generate your unique particle shape</p>
         
-        {/* <div className={styles.downloadButtons}>
-          <button 
-            onClick={downloadVideo} 
-            disabled={isRecording}
-            className={styles.downloadBtn}
-          >
-            {isRecording ? `Recording ${Math.round(recordingProgress)}%` : 'Download Video'}
-          </button>
-        </div> */}
+        {/* Wallet Connection */}
+        {!wallet.connected ? (
+          <div className={styles.walletSection}>
+            <button 
+              onClick={() => walletModal.setVisible(true)}
+              className={styles.connectBtn}
+            >
+              Connect Wallet
+            </button>
+            <p className={styles.walletHint}>Connect wallet to download videos (100k $NFT per download)</p>
+          </div>
+        ) : (
+          <>
+            <div className={styles.walletInfo}>
+              <p className={styles.walletAddress}>
+                {wallet.publicKey?.toBase58().slice(0, 4)}...{wallet.publicKey?.toBase58().slice(-4)}
+              </p>
+              {nftBalance !== null ? (
+                <p className={styles.balance}>
+                  {nftBalance >= 1000000 
+                    ? `${(nftBalance / 1000000).toFixed(2)}M $NFT`
+                    : nftBalance >= 1000
+                    ? `${(nftBalance / 1000).toFixed(2)}k $NFT`
+                    : `${nftBalance.toFixed(2)} $NFT`
+                  }
+                </p>
+              ) : (
+                <p className={styles.balance}>Loading...</p>
+              )}
+              <button onClick={() => wallet.disconnect()} className={styles.disconnectBtn}>
+                Disconnect
+              </button>
+            </div>
+
+            {paymentError && (
+              <div className={styles.errorMessage}>{paymentError}</div>
+            )}
+
+            <div className={styles.downloadButtons}>
+              <button 
+                onClick={handleDownloadClick} 
+                disabled={isRecording || isProcessingPayment || (nftBalance !== null && nftBalance < DOWNLOAD_PRICE)}
+                className={styles.downloadBtn}
+              >
+                {isProcessingPayment ? 'Processing Payment...' : 
+                 isRecording ? `Recording ${Math.round(recordingProgress)}%` : 
+                 `Download Video (${(DOWNLOAD_PRICE / 1000).toFixed(0)}k $NFT)`}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       <div className={`${styles.advancedControls} ${showControls ? styles.showMobile : ''}`}>
